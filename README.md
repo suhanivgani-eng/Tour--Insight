@@ -47,5 +47,5 @@ Tour_Insight_Project/
 ├── requirements.txt
 └── README.md
 
-# conclusiion
+# conclusion
 This project helps automate the analysis of tourist feedback, enabling tourism authorities to make data-driven decisions and improve overall visitor satisfaction.
