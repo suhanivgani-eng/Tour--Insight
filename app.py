@@ -1,21 +1,29 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from textblob import TextBlob
-import numpy as np
 from wordcloud import WordCloud
+import numpy as np
+
+# -----------------------------
+# SAFE SEABORN IMPORT (FIX)
+# -----------------------------
+try:
+    import seaborn as sns
+    SEABORN_AVAILABLE = True
+except:
+    SEABORN_AVAILABLE = False
 
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
 st.set_page_config(page_title="Tour Insight AI", layout="wide")
 
-st.title("🌍 Tour Insight - AI Tourism Analytics System")
-st.markdown("Smart analysis with sentiment scoring, place insights & heatmaps")
+st.title("🌍 Tour Insight - Smart Tourism Analytics System")
+st.markdown("AI-based sentiment analysis with insights and heatmap dashboard")
 
 # -----------------------------
-# FILE UPLOAD
+# UPLOAD FILE
 # -----------------------------
 uploaded_file = st.file_uploader("📂 Upload Tourist Reviews CSV", type=["csv"])
 
@@ -40,29 +48,23 @@ if uploaded_file:
             return "Negative"
 
     # -----------------------------
-    # TOPIC DETECTION (WITH PLACE ADDED)
+    # TOPIC DETECTION (INCLUDING PLACE)
     # -----------------------------
     def get_topic(text):
         text = str(text).lower()
 
-        if any(x in text for x in ["palace", "hill", "zoo", "garden", "temple"]):
+        if any(x in text for x in ["palace", "hill", "zoo", "garden", "temple", "beach"]):
             return "Place"
-
         elif "food" in text:
             return "Food"
-
         elif "transport" in text or "bus" in text or "auto" in text:
             return "Transport"
-
-        elif "clean" in text or "toilet" in text or "waste" in text:
+        elif "clean" in text or "toilet" in text:
             return "Cleanliness"
-
         elif "price" in text or "cost" in text or "expensive" in text:
             return "Pricing"
-
         elif "guide" in text or "map" in text:
             return "Guidance"
-
         else:
             return "General"
 
@@ -70,7 +72,7 @@ if uploaded_file:
     df["Topic"] = df["review"].apply(get_topic)
 
     # -----------------------------
-    # SENTIMENT SCORE (NUMERIC)
+    # NUMERIC SCORE
     # -----------------------------
     def sentiment_score(text):
         return TextBlob(str(text)).sentiment.polarity
@@ -78,7 +80,7 @@ if uploaded_file:
     df["Score"] = df["review"].apply(sentiment_score)
 
     # -----------------------------
-    # SIDEBAR FILTERS
+    # FILTERS
     # -----------------------------
     st.sidebar.title("🔍 Filters")
 
@@ -101,25 +103,13 @@ if uploaded_file:
         filtered_df = filtered_df[filtered_df["Sentiment"] == sentiment_filter]
 
     # -----------------------------
-    # PLACE SCORE ENGINE
+    # METRICS
     # -----------------------------
-    def place_score(data):
-        place_df = data[data["Topic"] == "Place"]
-
-        if len(place_df) == 0:
-            return None
-
-        return round(np.mean(place_df["Score"]) * 100, 2)
-
-    # -----------------------------
-    # DASHBOARD METRICS
-    # -----------------------------
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
 
     col1.metric("Total Reviews", len(df))
     col2.metric("Filtered Reviews", len(filtered_df))
     col3.metric("Avg Sentiment Score", round(df["Score"].mean() * 100, 2))
-    col4.metric("Place Score", place_score(df) if place_score(df) else "N/A")
 
     # -----------------------------
     # TABS
@@ -127,18 +117,11 @@ if uploaded_file:
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Data", "📈 Analytics", "🔥 Heatmap", "💡 Insights"])
 
     # -----------------------------
-    # TAB 1 - DATA
+    # TAB 1
     # -----------------------------
     with tab1:
-        st.subheader("Filtered Dataset")
+        st.subheader("Dataset")
         st.dataframe(filtered_df)
-
-        st.download_button(
-            "⬇ Download Data",
-            filtered_df.to_csv(index=False).encode('utf-8'),
-            "tour_insight_data.csv",
-            "text/csv"
-        )
 
     # -----------------------------
     # TAB 2 - ANALYTICS
@@ -161,11 +144,11 @@ if uploaded_file:
         st.pyplot(fig2)
 
     # -----------------------------
-    # TAB 3 - HEATMAP (NEW)
+    # TAB 3 - HEATMAP (SAFE FIX)
     # -----------------------------
     with tab3:
 
-        st.subheader("🔥 Tourism Satisfaction Heatmap")
+        st.subheader("🔥 Tourist Satisfaction Heatmap")
 
         heat_data = df.pivot_table(
             index="Topic",
@@ -173,55 +156,51 @@ if uploaded_file:
             aggfunc="mean"
         )
 
-        fig3, ax3 = plt.subplots()
-        sns.heatmap(heat_data, annot=True, cmap="RdYlGn", ax=ax3)
+        if SEABORN_AVAILABLE:
+            fig3, ax3 = plt.subplots()
+            sns.heatmap(heat_data, annot=True, cmap="RdYlGn", ax=ax3)
+            st.pyplot(fig3)
+        else:
+            st.warning("Seaborn not installed, showing simple chart instead")
 
-        st.pyplot(fig3)
+            st.bar_chart(heat_data)
 
         st.info("Green = High Satisfaction | Red = Low Satisfaction")
 
     # -----------------------------
     # SMART INSIGHTS
     # -----------------------------
-    def get_recommendations(topic):
+    def recommendations(topic):
 
         topic = str(topic).lower()
 
         if topic == "cleanliness":
-            return ["Increase cleaning frequency", "Smart dustbins", "Toilet monitoring"]
-
+            return ["Improve sanitation", "Smart bins", "Frequent cleaning"]
         elif topic == "transport":
-            return ["Shuttle buses", "Fixed fare system", "Better routes"]
-
+            return ["Better buses", "Fix fares", "Improve routes"]
         elif topic == "pricing":
-            return ["Control overpricing", "Price boards", "Monitoring system"]
-
+            return ["Control pricing", "Display boards", "Monitoring system"]
         elif topic == "food":
-            return ["Improve hygiene", "Food inspections", "Clean zones"]
-
+            return ["Hygiene checks", "Clean food zones", "Regular inspections"]
         elif topic == "guidance":
             return ["QR guides", "AI chatbot", "Better maps"]
-
         elif topic == "place":
-            return ["Improve tourist attraction maintenance", "Crowd management", "Better facilities"]
-
+            return ["Improve attractions", "Crowd control", "Better facilities"]
         else:
-            return ["Improve overall tourism experience"]
+            return ["Improve tourism experience"]
 
     # -----------------------------
-    # TAB 4 - INSIGHTS
+    # TAB 4
     # -----------------------------
     with tab4:
 
-        st.subheader("🧠 Smart Tourism Insights")
+        st.subheader("🧠 Smart Insights")
 
         top_topic = df["Topic"].value_counts().idxmax()
 
-        st.success(f"Main Issue Area: {top_topic}")
+        st.success(f"Main Issue: {top_topic}")
 
-        st.subheader("🚀 Recommendations")
-
-        for r in get_recommendations(top_topic):
+        for r in recommendations(top_topic):
             st.info("👉 " + r)
 
         st.subheader("❌ Negative Reviews")
